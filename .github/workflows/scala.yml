@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023 Everybody
+#
+# SPDX-License-Identifier: CC0-1.0
+
 name: Scala CI
 
 on: [push, pull_request]
@@ -8,7 +12,7 @@ permissions:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - uses: actions/checkout@v3

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 "Everybody"
+//
+// SPDX-License-Identifier: MIT
+
 package naxriscv
 
 import spinal.core._
@@ -62,7 +66,10 @@ object Config{
               simulation : Boolean = GenerationFlags.simulation,
               sideChannels : Boolean = false,
               dispatchSlots : Int = 32,
-              robSize : Int = 64): ArrayBuffer[Plugin] ={
+              robSize : Int = 64,
+              withCoherency : Boolean = false,
+              hartId : Int = 0,
+              asic : Boolean = false): ArrayBuffer[Plugin] ={
     val plugins = ArrayBuffer[Plugin]()
 
     val fpu = withFloat || withDouble
@@ -252,33 +259,29 @@ object Config{
           }
         )
       }
+
+      plugins += new DataCachePlugin(
+        memDataWidth = 64,
+        cacheSize = 4096 * 4,
+        wayCount = 4,
+        refillCount = 2,
+        writebackCount = 2,
+        tagsReadAsync = withDistributedRam,
+        loadReadTagsAt = if (withDistributedRam) 1 else 0,
+        storeReadTagsAt = if (withDistributedRam) 1 else 0,
+        reducedBankWidth = false,
+        //      loadHitAt      = 2
+        //      loadRspAt      = 3,
+        loadRefillCheckEarly = false,
+        withCoherency = withCoherency,
+        probeIdWidth = if (withCoherency) 4 else 0,
+        ackIdWidth = if (withCoherency) 4 else 0
+      )
     }
 
-    if(!withLoadStore){
-      plugins += new Plugin{
-        val setup = create early new Area{
-          val cache = getService[DataCachePlugin]
-          val store = cache.newStorePort()
-          spinal.lib.slave(store)
-          spinal.lib.slave(cache.setup.lockPort)
-        }
-      }
-    }
 
-    plugins += new DataCachePlugin(
-      memDataWidth = 64,
-      cacheSize    = 4096*4,
-      wayCount     = 4,
-      refillCount = 2,
-      writebackCount = 2,
-      tagsReadAsync = withDistributedRam,
-      loadReadTagsAt = if(withDistributedRam) 1 else 0,
-      storeReadTagsAt = if(withDistributedRam) 1 else 0,
-      reducedBankWidth = false,
-      //      loadHitAt      = 2
-      //      loadRspAt      = 3,
-      loadRefillCheckEarly = false
-    )
+
+
 
     //MISC
     plugins += new RobPlugin(
@@ -293,7 +296,8 @@ object Config{
       spec = riscv.IntRegFile,
       physicalDepth = 64,
       bankCount = 1,
-      preferedWritePortForInit = "ALU0"
+      preferedWritePortForInit = "ALU0",
+      latchBased = asic
     )
     plugins += new CommitDebugFilterPlugin(List(4, 8, 12))
     plugins += new CsrRamPlugin()
@@ -301,7 +305,8 @@ object Config{
       withRdTime = withRdTime,
       withSupervisor = withSupervisor,
       withDebug = withDebug,
-      debugTriggers = debugTriggers
+      debugTriggers = debugTriggers,
+      hartId = hartId
     ))
     if(withPerfCounters) plugins += new PerformanceCounterPlugin(
       additionalCounterCount = 4,
@@ -320,7 +325,20 @@ object Config{
     plugins += new ExecutionUnitBase("EU0", writebackCountMax = 1, readPhysRsFromQueue = true)
     plugins += new IntFormatPlugin("EU0")
     plugins += new SrcPlugin("EU0")
-    plugins += new MulPlugin("EU0", writebackAt = 2, staticLatency = false)
+    plugins += new RsUnsignedPlugin("EU0")
+    plugins += (asic match {
+      case false => new MulPlugin(euId = "EU0", writebackAt = 2, staticLatency = false)
+      case true => new MulPlugin(
+        euId = "EU0",
+        sumAt = 0,
+        sumsSpec = List((20, 2), (24, 8), (1000, 1000)),
+        untilOffsetS0 = 28,
+        splitWidthA = xlen,
+        splitWidthB = 1,
+        useRsUnsignedPlugin = true,
+        staticLatency = false
+      )
+    })
     plugins += new DivPlugin("EU0", writebackAt = 2)
     //    plugins += new IntAluPlugin("EU0")
     //    plugins += new ShiftPlugin("EU0")
@@ -355,7 +373,8 @@ object Config{
         physicalDepth = 64,
         bankCount = 1,
         allOne = simulation,
-        preferedWritePortForInit = "Fpu"
+        preferedWritePortForInit = "Fpu",
+        latchBased = asic
       )
 
       plugins += new FpuIntegerExecute("EU0")
@@ -418,8 +437,11 @@ object Config{
     // Integer write port sharing
     val intRfWrite = new{}
     plugins.collect{
-      case lsu : LsuPlugin =>
+      case lsu: LsuPlugin =>
         lsu.addRfWriteSharing(IntRegFile, intRfWrite, withReady = false, priority = 2)
+      case lsu: Lsu2Plugin =>
+        //Surprisingly doesn't make that big of a difference
+//        lsu.addRfWriteSharing(IntRegFile, intRfWrite, withReady = false, priority = 2)
       case eu0 : ExecutionUnitBase if eu0.euId == "EU0" =>
         eu0.addRfWriteSharing(IntRegFile, intRfWrite, withReady = true, priority = 1)
       case fpu : FpuWriteback =>
@@ -450,6 +472,7 @@ object Gen extends App{
       withLsu2 = true,
       lqSize = 16,
       sqSize = 16,
+//      withCoherency = true,
       ioRange = a => a(31 downto 28) === 0x1// || !a(12)//(a(5, 6 bits) ^ a(12, 6 bits)) === 51
     )
     l.foreach{
@@ -513,7 +536,8 @@ object Gen64 extends App{
       withFloat = false,
       withDouble = false,
       lqSize = 16,
-      sqSize = 16
+      sqSize = 16,
+      asic = false
     )
     l.foreach{
       case p : EmbeddedJtagPlugin => p.debugCd.load(ClockDomain.current.copy(reset = Bool().setName("debug_reset")))
@@ -823,4 +847,41 @@ BRAM	6	365	1.6438355
 DSP	4	740	0.5405406
 IO	138	500	27.599998
 BUFG	1	32	3.125
+
+
+
+make output/nax/buildroot/run0/PASS ARGS="--stats-print --memory-latency 25 --memory-bandwidth 0.8"
+with 4*2KB
+root@buildroot:~#SUCCESS buildroot_run0
+STATS :
+  IPC               0.383806
+  cycles            366078779
+  commits           140503396
+  reschedules       2868806
+  trap              10513
+  storeToLoadHazard 13478
+  loadHitMiss       145029
+
+with 4*4KB
+root@buildroot:~#SUCCESS buildroot_run0
+STATS :
+  IPC               0.436099
+  cycles            319994552
+  commits           139549454
+  reschedules       2839479
+  trap              9863
+  storeToLoadHazard 12096
+  loadHitMiss       146718
+
+with 4*4KB  --memory-latency 8 --memory-bandwidth 1.0
+  IPC               0.590046
+  cycles            240993947
+  commits           142197543
+  reschedules       2851075
+  trap              8858
+  branch miss       0
+  jump miss         0
+  storeToLoadHazard 11832
+  loadHitMiss       150247
+
  */
