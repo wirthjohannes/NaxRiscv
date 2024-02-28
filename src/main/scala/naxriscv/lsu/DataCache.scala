@@ -132,7 +132,7 @@ case class DataMemBusParameter( addressWidth: Int,
         M2sAgent(
           name = name,
           M2sSource(
-            id    = SizeMapping(log2Up(readIdCount max writeIdCount), readIdCount),
+            id    = SizeMapping(1 << log2Up(readIdCount max writeIdCount), readIdCount),
             emits = tilelink.M2sTransfers(
               get = SizeRange(lineSize)
             )
@@ -517,6 +517,7 @@ case class DataMemBus(p : DataMemBusParameter) extends Bundle with IMasterSlave 
 
         val beat = bus.a.beatCounter()
         bus.a.address(log2Up(p.dataWidth/8), widthOf(beat) bits) := beat
+        bus.a.source.allowOverride()
         bus.a.source.msb := sel
 
         write.cmd.ready := !sel && bus.a.ready
@@ -1003,7 +1004,7 @@ class DataCache(val p : DataCacheParameters) extends Component {
       val rspWithData = p.withCoherency.mux(io.mem.read.rsp.withData, True)
       if(withCoherency) assert(!(io.mem.read.rsp.valid && !rspWithData && slots.map(_.data).read(io.mem.read.rsp.id)), "Data cache asked for data but didn't recieved any :(")
 
-      val bankWriteNotif = B(0, bankCount bits)
+      val bankWriteNotif = B(0, bankCount bits).allowOverride()
       for ((bank, bankId) <- banks.zipWithIndex) {
         if (!reducedBankWidth) {
           bankWriteNotif(bankId) := io.mem.read.rsp.valid && rspWithData && way === bankId
