@@ -314,10 +314,19 @@ Nax : timed 5026 gametics in 4958 realtics (35.480034 fps)
       timed 5026 gametics in 3187 realtics (55.196110 fps) (LSU2)
       timed 5026 gametics in 2369 realtics (74.254959 fps) (-1)
       timed 5026 gametics in 2301 realtics (76.449371 fps) (-1)
-      timed 5026 gametics in 2375 realtics (74.067368 fps) (LSU2)
+      timed 5026 gametics in 2375 realtics (74.067368 fps) (-1 LSU2)
 Vex : timed 5026 gametics in 5606 realtics (31.378880 fps)
       timed 5026 gametics in 5238 realtics (33.583427 fps)
       timed 5026 gametics in 4866 realtics (36.150841 fps) (-1)
+vexii:timed 5026 gametics in 6349 realtics (27.706726 fps) (no sb, 1i)
+      timed 5026 gametics in 3695 realtics (47.607578 fps) (-1    sb, 2i, 128KB-l2)
+      timed 5026 gametics in 4303 realtics (40.880779 fps) (-1 no sb, 1i)
+      timed 5026 gametics in 3662 realtics (48.036591 fps) (-1 no sb, 1i, 128KB-l2)
+      timed 5026 gametics in 3164 realtics (55.597343 fps) (-1 no sb, 2i, 128KB-l2)
+      timed 5026 gametics in 2724 realtics (64.577827 fps) (-1    sb, 2i, 128KB-l2)
+      timed 5026 gametics in 2897 realtics (60.721436 fps) 2x(-1    sb, 2i, 128KB-l2)
+
+
 
 chocolate-doom -2 -timedemo demo1.lmp  -noblit
 Nax : timed 5026 gametics in 2040 realtics (86.230392 fps)
@@ -329,9 +338,56 @@ Nax : timed 5026 gametics in 2040 realtics (86.230392 fps)
       timed 5026 gametics in 1751 realtics (100.462593 fps)
       timed 5026 gametics in 1737 realtics (101.272308 fps) (LSU2)
 Vex : timed 5026 gametics in 3851 realtics (45.679043 fps)
+vexii:timed 5026 gametics in 3013 realtics (58.383671 fps) (no sb, 1i)
+      timed 5026 gametics in 2556 realtics (68.822380 fps) (no sb, 1i, 128KB-l2)
+      timed 5026 gametics in 2229 realtics (78.918800 fps) (no sb, 2i, 128KB-l2)
+      timed 5026 gametics in 2071 realtics (84.939644 fps) (   sb, 2i, 128KB-l2)
+      timed 5026 gametics in 2175 realtics (80.878159 fps) 2x(   sb, 2i, 128KB-l2)
 
 no draw no blit :
 Nax : timed 5026 gametics in 277 realtics (635.054138 fps
+vexii:timed 5026 gametics in 259 realtics (679.189209 fps)  (-1 no sb, 2i, 128KB-l2)
+      timed 5026 gametics in 252 realtics (698.055542 fps)  (-1    sb, 2i, 128KB-l2)
+
+
+
+in debian =>
+usr/games/chocolate-doom -1 -nosound -timedemo demo1.lmp
+nax =>      timed 5026 gametics in 6220 realtics (28.281351 fps)
+vexii 1i => timed 5026 gametics in 8986 realtics (19.576008 fps)
+vexii 2i => timed 5026 gametics in 8092 realtics (21.738754 fps)
+
+
+
+/usr/games/chocolate-doom -1 -nosound -timedemo demo1.lmp  -noblit
+nax =>      timed 5026 gametics in 1951 realtics (90.164017 fps)
+vexii 1i => timed 5026 gametics in 2919 realtics (60.263790 fps)
+vexii 2i => timed 5026 gametics in 2652 realtics (66.331070 fps)
+
+https://download.blender.org/peach/bigbuckbunny_movies/  -vf scale=640:360 -sws 4
+time mplayer -lavdopts threads=4  /home/miaou/readonly/video/BigBuckBunny_320x180.mp4
+time mplayer -vo fbdev -lavdopts threads=1 /home/miaou/readonly/video/file_example_MP4_480_1_5MG.mp4
+2c
+1c
+
+vexii
+real	1m42.729s 67
+user	2m15.184s
+sys	0m3.116s
+
+real	2m8.090s 93
+user	2m5.600s
+sys	0m2.101s
+
+
+nax
+real	1m7.359s
+user	1m27.720s
+sys	0m2.908s
+
+real	1m21.211s
+user	1m18.886s
+sys	0m2.099s
 
 
 root@buildroot:~# ramspeed -b 1 -g  1
@@ -609,4 +665,30 @@ enable root ssh
 disable x11 GLX extention
 enable HVC0
 
+
+
+BLUETOOTH !
+
+bluealsa -p a2dp-source -p a2dp-sink --a2dp-force-audio-cd
+bluetoothctl
+connect 88:C9:E8:E6:2A:69
+pulseaudio --start
+systemctl status bluetooth
+speaker-test -t wav -c 6
+speaker-test -t wav -c 6 -D btheadset
+pacmd list-sinks
+aplay -D bluealsa piano2.wave
+
+https://agl-gsod-2020-demo-mkdocs.readthedocs.io/en/latest/icefish/apis_services/reference/audio/audio/bluez-alsa/
+
+
+systemctl restart bluetooth
+
+pulseaudio-module-bluetooth
+
+mpg123 -a btheadset mp3/01-long_distance_calling-metulsky_curse_revisited.mp3
+
+
+
+--sbc-quality=low 
  */
