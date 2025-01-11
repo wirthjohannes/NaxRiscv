@@ -143,7 +143,8 @@ case class RamMr[T <: Data](payloadType : HardType[T], depth : Int, readPorts : 
 
   val banks = for(read <- io.read) yield new Area{
     val ram = Mem.fill(depth)(payloadType)
-    ram.initBigInt((0 until depth).map(_ => BigInt(0)))
+    if(GenerationFlags.simulation)
+      ram.initBigInt((0 until depth).map(_ => BigInt(0)))
     ram.write(
       enable = io.write.valid,
       address = io.write.address,
