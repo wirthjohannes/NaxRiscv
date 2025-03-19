@@ -40,7 +40,7 @@ class NaxRiscv(val plugins : Seq[Plugin]) extends Component{
 }
 
 object Config{
-  def plugins(resetVector : BigInt = 0x80000000l,
+  def plugins(resetVector : UInt = 0x80000000l,
               withRdTime : Boolean = true,
               ioRange    : UInt => Bool = _(31 downto 28) === 0x1,
               fetchRange : UInt => Bool = _(31 downto 28) =/= 0x1,

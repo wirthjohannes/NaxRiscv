@@ -132,6 +132,7 @@ class TilelinkNaxRiscvFiber(val plugins : Seq[Plugin]) extends Area with RiscvHa
           p.io.rdtime := clint.thread.core.io.time
         }
       }
+      case p: PcPlugin => p.logic.resetVector := p.resetV
       case _ =>
     }
   }

@@ -19,7 +19,7 @@ import scala.collection.mutable.ArrayBuffer
 import Frontend._
 
 
-class PcPlugin(var resetVector : BigInt = 0x80000000l, fetchPcIncAt : Int = 1) extends Plugin with JumpService{
+class PcPlugin(var resetV : UInt = 0x80000000l, fetchPcIncAt : Int = 1) extends Plugin with JumpService{
   case class JumpSpec(interface :  Flow[JumpCmd], priority : Int, aggregationPriority : Int)
   val jumpsSpec = ArrayBuffer[JumpSpec]()
   override def createJumpInterface(priority : Int, aggregationPriority : Int = 0): Flow[JumpCmd] = {
@@ -33,6 +33,9 @@ class PcPlugin(var resetVector : BigInt = 0x80000000l, fetchPcIncAt : Int = 1) e
   }
 
   val logic = create late new Area{
+
+    val resetVector = in UInt(32 bit)
+
     val stage = setup.fetch.getStage(0)
     val fetch = getService[FetchPlugin]
     val pipeline = fetch.getPipeline()
